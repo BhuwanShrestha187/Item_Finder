@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 from rapidfuzz import process, fuzz
-
+import psycopg2
+import os
 app = Flask(__name__)
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
 def get_db_connection():
-    conn = sqlite3.connect('items.db')
-    conn.row_factory = sqlite3.Row
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
 def get_all_items():
