@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Item Locator</title>
+        <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #ff7e5f, #feb47b); /* Sunset Colors */
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .entry-column {
+            flex: 1;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-column {
+            flex: 2;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            font-weight: 600;
+        }
+
+        .search-container input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background: #f0f0f0;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .add-container {
+            margin-top: 20px;
+        }
+
+        .add-container input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: #f9f9f9;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .result-item strong {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .result-item span {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .result-item .possible-match {
+            color: #e74c3c;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 15px;
+                gap: 20px;
+            }
+
+            .entry-column, .results-column {
+                flex: none;
+                width: 100%;
+                max-height: none;
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 15px;
+            }
+
+            .search-container input[type="text"],
+            .add-container input[type="text"],
+            button {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .result-item {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+
+            .result-item strong {
+                font-size: 1em;
+            }
+
+            .suggestions {
+                max-height: 150px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .search-container input[type="text"],
+            .add-container input[type="text"],
+            button {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            .suggestions {
+                max-height: 120px;
+            }
+        }
+    </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="entry-column">
+                <h1>Item Locator</h1>
+
+                <div class="search-container">
+                    <input type="text" id="search-input"
+                        placeholder="Search for an item...">
+                    <div class="suggestions" id="suggestions"></div>
+                    <button onclick="searchItem()">Search</button>
+                </div>
+
+                <div class="add-container">
+                    <h3 style="color: #2c3e50; margin-bottom: 10px;">Add New
+                        Item</h3>
+                    <input type="text" id="new-name" placeholder="Item name">
+                    <input type="text" id="new-location" placeholder="Location">
+                    <button onclick="addItem()">Add Item</button>
+                </div>
+            </div>
+
+            <div class="results-column">
+                <div id="results"></div>
+            </div>
+        </div>
+
+        <script>
+        let debounceTimeout;
+
+        function searchItem() {
+            const searchTerm = document.getElementById('search-input').value;
+            fetch('/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `search_term=${encodeURIComponent(searchTerm)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '';
+                
+                if (data.message) {
+                    resultsDiv.innerHTML = `<p style="color: #7f8c8d;">${data.message}</p>`;
+                    return;
+                }
+                
+                data.results.forEach(item => {
+                    resultsDiv.innerHTML += `
+                        <div class="result-item">
+                            <strong>${item.name}</strong><br>
+                            <span>Location: ${item.location}</span>
+                            ${item.score < 100 ? '<br><span class="possible-match">(Possible match)</span>' : ''}
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function addItem() {
+            const name = document.getElementById('new-name').value;
+            const location = document.getElementById('new-location').value;
+            
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}&location=${encodeURIComponent(location)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                document.getElementById('new-name').value = '';
+                document.getElementById('new-location').value = '';
+                searchItem(); // Refresh results after adding
+                fetchSuggestions(); // Refresh suggestions
+            });
+        }
+
+        function fetchSuggestions() {
+            const query = document.getElementById('search-input').value;
+            if (!query) {
+                document.getElementById('suggestions').style.display = 'none';
+                return;
+            }
+
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
+                fetch(`/suggest?query=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const suggestionsDiv = document.getElementById('suggestions');
+                        suggestionsDiv.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(suggestion => {
+                                suggestionsDiv.innerHTML += `<div class="suggestion-item" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`;
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    })
+                    .catch(error => console.error('Error fetching suggestions:', error));
+            }, 300);
+        }
+
+        function selectSuggestion(suggestion) {
+            document.getElementById('search-input').value = suggestion;
+            document.getElementById('suggestions').style.display = 'none';
+            searchItem();
+        }
+
+        // Listen for input changes and key events
+        document.getElementById('search-input').addEventListener('input', fetchSuggestions);
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchItem();
+                document.getElementById('suggestions').style.display = 'none';
+            }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            const suggestions = document.getElementById('suggestions');
+            const searchContainer = document.querySelector('.search-container');
+            if (!searchContainer.contains(e.target)) {
+                suggestions.style.display = 'none';
+            }
+        });
+    </script>
+    </body>
+</html>
