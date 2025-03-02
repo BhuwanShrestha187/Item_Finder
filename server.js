@@ -2,6 +2,14 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+const sequelize = require('./config/database');
+
+// Import models
+const User = require('./models/User');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+
 const app = express();
 
 // Middleware
@@ -18,6 +26,9 @@ app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the Expense Tracker API' });
 });
 
+// Routes
+app.use('/api/auth', authRoutes);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -30,6 +41,32 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-}); 
+const initializeDatabase = async () => {
+    try {
+        // First authenticate database connection
+        await sequelize.authenticate();
+        console.log('Database connection established successfully.');
+
+        // Sync all models
+        await sequelize.sync({ alter: true });
+        console.log('All models synchronized successfully');
+    } catch (error) {
+        console.error('Error initializing database:', error);
+        process.exit(1);
+    }
+};
+
+const startServer = async () => {
+    try {
+        await initializeDatabase();
+
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Unable to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer(); 
