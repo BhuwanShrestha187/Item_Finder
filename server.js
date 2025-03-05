@@ -6,9 +6,11 @@ const sequelize = require('./config/database');
 
 // Import models
 const User = require('./models/User');
+const Category = require('./models/Category');
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const categoryRoutes = require('./routes/categories');
 
 const app = express();
 
@@ -28,6 +30,7 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -41,11 +44,55 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+// Default categories that will be created for each user
+const DEFAULT_CATEGORIES = [
+    { name: 'Food & Dining', type: 'expense', description: 'Restaurants, groceries, and food delivery', icon: '🍽️' },
+    { name: 'Transportation', type: 'expense', description: 'Public transit, fuel, car maintenance', icon: '🚗' },
+    { name: 'Housing', type: 'expense', description: 'Rent, utilities, maintenance', icon: '🏠' },
+    { name: 'Entertainment', type: 'expense', description: 'Movies, games, hobbies', icon: '🎮' },
+    { name: 'Shopping', type: 'expense', description: 'Clothing, electronics, personal items', icon: '🛍️' },
+    { name: 'Healthcare', type: 'expense', description: 'Medical expenses, medications, insurance', icon: '⚕️' },
+    { name: 'Salary', type: 'income', description: 'Regular employment income', icon: '💰' },
+    { name: 'Investments', type: 'income', description: 'Stock dividends, interest, capital gains', icon: '📈' }
+];
+
+// Function to create default categories for a new user
+const createDefaultCategories = async (userId) => {
+    try {
+        const now = new Date();
+        const categories = DEFAULT_CATEGORIES.map(cat => ({
+            ...cat,
+            userId,
+            createdAt: now,
+            updatedAt: now
+        }));
+
+        await Category.bulkCreate(categories);
+        console.log(`Default categories created for user ${userId}`);
+    } catch (error) {
+        console.error('Error creating default categories:', error);
+    }
+};
+
 const initializeDatabase = async () => {
     try {
         // First authenticate database connection
         await sequelize.authenticate();
         console.log('Database connection established successfully.');
+
+        // Create enum type for category type if it doesn't exist
+        try {
+            await sequelize.query(`
+                DO $$ BEGIN
+                    CREATE TYPE "enum_categories_type" AS ENUM ('expense', 'income');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
+            `);
+            console.log('Category enum type created or already exists');
+        } catch (error) {
+            console.log('Error creating enum type:', error.message);
+        }
 
         // Sync all models
         await sequelize.sync({ alter: true });
@@ -63,6 +110,9 @@ const startServer = async () => {
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
+
+        // Export createDefaultCategories so it can be used in auth routes
+        app.locals.createDefaultCategories = createDefaultCategories;
     } catch (error) {
         console.error('Unable to start server:', error);
         process.exit(1);

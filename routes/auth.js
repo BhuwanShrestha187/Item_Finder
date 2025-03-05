@@ -35,6 +35,11 @@ router.post('/register', [
             lastName
         });
 
+        // Create default categories for the new user
+        if (req.app.locals.createDefaultCategories) {
+            await req.app.locals.createDefaultCategories(user.id);
+        }
+
         // Generate JWT token
         const token = user.generateAuthToken();
 
