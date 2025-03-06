@@ -4,13 +4,13 @@ require('dotenv').config();
 
 const sequelize = require('./config/database');
 
-// Import models
-const User = require('./models/User');
-const Category = require('./models/Category');
+// Import models from index.js
+const models = require('./models');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
+const expenseRoutes = require('./routes/expenses');
 
 const app = express();
 
@@ -31,6 +31,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -67,7 +68,7 @@ const createDefaultCategories = async (userId) => {
             updatedAt: now
         }));
 
-        await Category.bulkCreate(categories);
+        await models.Category.bulkCreate(categories);
         console.log(`Default categories created for user ${userId}`);
     } catch (error) {
         console.error('Error creating default categories:', error);
@@ -90,6 +91,20 @@ const initializeDatabase = async () => {
                 END $$;
             `);
             console.log('Category enum type created or already exists');
+        } catch (error) {
+            console.log('Error creating enum type:', error.message);
+        }
+
+        // Create enum type for expense type if it doesn't exist
+        try {
+            await sequelize.query(`
+                DO $$ BEGIN
+                    CREATE TYPE "enum_expenses_type" AS ENUM ('expense', 'income');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
+            `);
+            console.log('Expense enum type created or already exists');
         } catch (error) {
             console.log('Error creating enum type:', error.message);
         }

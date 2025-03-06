@@ -42,4 +42,7 @@ Category.belongsTo(User, {
     onDelete: 'CASCADE',
 });
 
+// Note: The hasMany association for Expense will be defined after Expense model is created
+// to avoid circular dependencies
+
 module.exports = Category; 
