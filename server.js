@@ -11,6 +11,7 @@ const models = require('./models');
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
 const expenseRoutes = require('./routes/expenses');
+const budgetRoutes = require('./routes/budgets');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/budgets', budgetRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -81,8 +83,9 @@ const initializeDatabase = async () => {
         await sequelize.authenticate();
         console.log('Database connection established successfully.');
 
-        // Create enum type for category type if it doesn't exist
+        // Create enum types if they don't exist
         try {
+            // Category type enum
             await sequelize.query(`
                 DO $$ BEGIN
                     CREATE TYPE "enum_categories_type" AS ENUM ('expense', 'income');
@@ -91,12 +94,8 @@ const initializeDatabase = async () => {
                 END $$;
             `);
             console.log('Category enum type created or already exists');
-        } catch (error) {
-            console.log('Error creating enum type:', error.message);
-        }
 
-        // Create enum type for expense type if it doesn't exist
-        try {
+            // Expense type enum
             await sequelize.query(`
                 DO $$ BEGIN
                     CREATE TYPE "enum_expenses_type" AS ENUM ('expense', 'income');
@@ -105,8 +104,29 @@ const initializeDatabase = async () => {
                 END $$;
             `);
             console.log('Expense enum type created or already exists');
+
+            // Budget period enum
+            await sequelize.query(`
+                DO $$ BEGIN
+                    CREATE TYPE "enum_budgets_period" AS ENUM ('daily', 'weekly', 'monthly', 'yearly', 'custom');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
+            `);
+            console.log('Budget period enum type created or already exists');
+
+            // Budget status enum
+            await sequelize.query(`
+                DO $$ BEGIN
+                    CREATE TYPE "enum_budgets_status" AS ENUM ('active', 'completed', 'cancelled');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$;
+            `);
+            console.log('Budget status enum type created or already exists');
+
         } catch (error) {
-            console.log('Error creating enum type:', error.message);
+            console.log('Error creating enum types:', error.message);
         }
 
         // Sync all models

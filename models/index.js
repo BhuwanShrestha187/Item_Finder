@@ -1,6 +1,7 @@
 const User = require('./User');
 const Category = require('./Category');
 const Expense = require('./Expense');
+const Budget = require('./Budget');
 
 // Define associations that would cause circular dependencies if defined in the models
 
@@ -22,8 +23,21 @@ Category.hasMany(Expense, {
     as: 'expenses'
 });
 
+// User to Budgets - One to Many
+User.hasMany(Budget, {
+    foreignKey: 'userId',
+    as: 'budgets'
+});
+
+// Category to Budgets - One to Many
+Category.hasMany(Budget, {
+    foreignKey: 'categoryId',
+    as: 'budgets'
+});
+
 module.exports = {
     User,
     Category,
-    Expense
+    Expense,
+    Budget
 }; 
