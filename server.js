@@ -7,6 +7,9 @@ const sequelize = require('./config/database');
 // Import models from index.js
 const models = require('./models');
 
+// Import error handler
+const { errorHandler } = require('./middleware/errorHandler');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
@@ -26,7 +29,11 @@ app.use(cors({
 
 // Basic route for testing
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to the Expense Tracker API' });
+    res.json({
+        success: true,
+        message: 'Welcome to the Expense Tracker API',
+        version: '1.0.0'
+    });
 });
 
 // Routes
@@ -35,15 +42,16 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/budgets', budgetRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
         success: false,
-        message: 'Something went wrong!',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        message: 'API endpoint not found'
     });
 });
+
+// Error handling middleware
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,12 +1,5 @@
-# Dependencies
+# Node.js
 node_modules/
 
-
-# Environment variables
-.env
-
-
-
-
-# Logs
-logs
+.env 
+logs/
