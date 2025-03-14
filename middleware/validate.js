@@ -1,35 +1,32 @@
-const Joi = require('joi');
+const { validationResult } = require('express-validator');
 const { ApiError } = require('./errorHandler');
 
 /**
- * Middleware to validate request data against a Joi schema
- * @param {Joi.Schema} schema - Joi schema to validate against
- * @param {string} property - Request property to validate (body, params, query)
+ * Middleware to process express-validator validation results
+ * @param {Array|Object} validations - Express validator middlewares
  * @returns {Function} Express middleware function
  */
-const validate = (schema, property = 'body') => {
-    return (req, res, next) => {
-        const { error } = schema.validate(req[property], {
-            abortEarly: false,
-            stripUnknown: true,
-            errors: {
-                wrap: {
-                    label: false
-                }
+const validate = (validations) => {
+    return [
+        // Apply all validation middlewares
+        ...(Array.isArray(validations) ? validations : [validations]),
+
+        // Check for validation errors
+        (req, res, next) => {
+            const errors = validationResult(req);
+
+            if (errors.isEmpty()) {
+                return next();
             }
-        });
 
-        if (!error) {
-            return next();
+            const extractedErrors = errors.array().map(err => ({
+                field: err.param,
+                message: err.msg
+            }));
+
+            throw new ApiError(400, 'Validation error', extractedErrors);
         }
-
-        const errors = error.details.map(detail => ({
-            field: detail.path.join('.'),
-            message: detail.message
-        }));
-
-        throw new ApiError(400, 'Validation error', errors);
-    };
+    ];
 };
 
 module.exports = validate; 

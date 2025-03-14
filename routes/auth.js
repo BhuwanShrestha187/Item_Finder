@@ -2,17 +2,29 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const validate = require('../middleware/validate');
+const { check, validationResult } = require('express-validator');
 const { asyncHandler, ApiError } = require('../middleware/errorHandler');
-const validationSchemas = require('../utils/validationSchemas');
 
 // @route   POST api/auth/register
 // @desc    Register user
 // @access  Public
 router.post(
     '/register',
-    validate(validationSchemas.register),
+    [
+        check('email', 'Please include a valid email').isEmail().normalizeEmail(),
+        check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
+        check('firstName', 'First name is required').trim().notEmpty(),
+        check('lastName', 'Last name is required').trim().notEmpty()
+    ],
     asyncHandler(async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
         const { email, password, firstName, lastName } = req.body;
 
         // Check if user exists
@@ -49,8 +61,19 @@ router.post(
 // @access  Public
 router.post(
     '/login',
-    validate(validationSchemas.login),
+    [
+        check('email', 'Please include a valid email').isEmail().normalizeEmail(),
+        check('password', 'Password is required').notEmpty()
+    ],
     asyncHandler(async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
         const { email, password } = req.body;
 
         // Check if user exists
