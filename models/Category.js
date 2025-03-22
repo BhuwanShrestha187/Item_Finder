@@ -10,39 +10,33 @@ const Category = sequelize.define('Category', {
     },
     name: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
     },
     type: {
         type: DataTypes.ENUM('expense', 'income'),
         allowNull: false,
+        defaultValue: 'expense'
     },
     description: {
-        type: DataTypes.STRING,
-        allowNull: true,
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     icon: {
         type: DataTypes.STRING,
-        allowNull: true,
-    },
-    userId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: User,
-            key: 'id'
-        }
+        allowNull: true
     }
 }, {
-    tableName: 'categories',
-    timestamps: true
+    tableName: 'categories'
 });
 
-// Set up association - Each Category belongs to a User
+// Define associations
 Category.belongsTo(User, {
     foreignKey: 'userId',
-    onDelete: 'CASCADE',
+    onDelete: 'CASCADE'
 });
 
-// Note: The hasMany association for Expense will be defined after Expense model is created
-// to avoid circular dependencies
+User.hasMany(Category, {
+    foreignKey: 'userId'
+});
 
 module.exports = Category; 
