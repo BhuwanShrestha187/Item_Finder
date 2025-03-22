@@ -16,20 +16,21 @@ const sequelize = new Sequelize(
             idle: 10000
         },
         define: {
-            underscored: true
+            underscored: true,
+            freezeTableName: true
         }
     }
 );
 
-const testConnection = async () => {
+// Test the connection and create database if it doesn't exist
+const initializeDatabase = async () => {
     try {
         await sequelize.authenticate();
-        console.log('Database connection established successfully.');
     } catch (error) {
-        console.error('Unable to connect to the database:', error);
+        process.exit(1);
     }
 };
 
-testConnection();
+initializeDatabase();
 
 module.exports = sequelize; 
