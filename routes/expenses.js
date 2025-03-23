@@ -1,93 +1,69 @@
 const express = require('express');
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
-const auth = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { Op } = require('sequelize');
 const Expense = require('../models/Expense');
 const Category = require('../models/Category');
-const { Op } = require('sequelize');
+const auth = require('../middleware/auth');
 
-// @route   GET api/expenses
-// @desc    Get all expenses for the current user with optional filtering
-// @access  Private
-router.get('/', auth, async (req, res) => {
-    try {
-        const {
-            startDate,
-            endDate,
-            categoryId,
-            type,
-            minAmount,
-            maxAmount,
-            sortBy = 'date',
-            sortOrder = 'DESC',
-            limit = 50,
-            offset = 0
-        } = req.query;
-
-        // Build where clause
-        const whereClause = { userId: req.user.id };
-
-        // Date filter
-        if (startDate && endDate) {
-            whereClause.date = {
-                [Op.between]: [startDate, endDate]
-            };
-        } else if (startDate) {
-            whereClause.date = {
-                [Op.gte]: startDate
-            };
-        } else if (endDate) {
-            whereClause.date = {
-                [Op.lte]: endDate
-            };
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = 'uploads/receipts';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
         }
-
-        // Category filter
-        if (categoryId) {
-            whereClause.categoryId = categoryId;
-        }
-
-        // Type filter (expense or income)
-        if (type && ['expense', 'income'].includes(type)) {
-            whereClause.type = type;
-        }
-
-        // Amount range filter
-        if (minAmount || maxAmount) {
-            whereClause.amount = {};
-            if (minAmount) whereClause.amount[Op.gte] = minAmount;
-            if (maxAmount) whereClause.amount[Op.lte] = maxAmount;
-        }
-
-        // Sort options
-        const order = [[sortBy, sortOrder]];
-
-        const expenses = await Expense.findAndCountAll({
-            where: whereClause,
-            order,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            include: [
-                {
-                    model: Category,
-                    attributes: ['id', 'name', 'type', 'icon']
-                }
-            ]
-        });
-
-        res.json({
-            count: expenses.count,
-            expenses: expenses.rows
-        });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
     }
 });
 
-// @route   GET api/expenses/:id
-// @desc    Get expense by ID
-// @access  Private
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+        }
+    }
+});
+
+// Get all expenses for the authenticated user
+router.get('/', auth, async (req, res) => {
+    try {
+        const expenses = await Expense.findAll({
+            where: { userId: req.user.id },
+            include: [{
+                model: Category,
+                as: 'category'
+            }],
+            order: [['date', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            data: expenses
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching expenses',
+            error: error.message
+        });
+    }
+});
+
+// Get a single expense by ID
 router.get('/:id', auth, async (req, res) => {
     try {
         const expense = await Expense.findOne({
@@ -95,161 +71,119 @@ router.get('/:id', auth, async (req, res) => {
                 id: req.params.id,
                 userId: req.user.id
             },
-            include: [
-                {
-                    model: Category,
-                    attributes: ['id', 'name', 'type', 'icon']
-                }
-            ]
+            include: [{
+                model: Category,
+                as: 'category'
+            }]
         });
 
         if (!expense) {
-            return res.status(404).json({ msg: 'Expense not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Expense not found'
+            });
         }
 
-        res.json(expense);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        res.json({
+            success: true,
+            data: expense
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching expense',
+            error: error.message
+        });
     }
 });
 
-// @route   POST api/expenses
-// @desc    Create a new expense
-// @access  Private
-router.post('/', [
-    auth,
-    [
-        check('amount', 'Amount is required and must be a positive number').isFloat({ min: 0.01 }),
-        check('date', 'Date is required').not().isEmpty(),
-        check('type', 'Type must be either expense or income').isIn(['expense', 'income']),
-        check('categoryId', 'Category is required').not().isEmpty()
-    ]
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { amount, description, date, type, categoryId } = req.body;
-
+// Get expenses by date range
+router.get('/range', auth, async (req, res) => {
     try {
-        // Verify the category exists and belongs to the user
-        const category = await Category.findOne({
+        const { startDate, endDate } = req.query;
+        const expenses = await Expense.findAll({
             where: {
-                id: categoryId,
-                userId: req.user.id
-            }
+                userId: req.user.id,
+                date: {
+                    [Op.between]: [startDate, endDate]
+                }
+            },
+            include: [{
+                model: Category,
+                as: 'category'
+            }],
+            order: [['date', 'DESC']]
         });
 
-        if (!category) {
-            return res.status(404).json({ msg: 'Category not found or unauthorized' });
+        res.json({
+            success: true,
+            data: expenses
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching expenses',
+            error: error.message
+        });
+    }
+});
+
+// Create a new expense
+router.post('/', auth, upload.single('receipt'), async (req, res) => {
+    try {
+        const { amount, description, date, categoryId, note, isRecurring, recurringFrequency } = req.body;
+
+        // Calculate next recurring date if it's a recurring expense
+        let nextRecurringDate = null;
+        if (isRecurring === 'true' && recurringFrequency) {
+            const currentDate = new Date(date);
+            switch (recurringFrequency) {
+                case 'daily':
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    break;
+                case 'weekly':
+                    currentDate.setDate(currentDate.getDate() + 7);
+                    break;
+                case 'monthly':
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                    break;
+                case 'yearly':
+                    currentDate.setFullYear(currentDate.getFullYear() + 1);
+                    break;
+            }
+            nextRecurringDate = currentDate.toISOString().split('T')[0];
         }
 
-        // Create expense
-        const newExpense = await Expense.create({
+        const expense = await Expense.create({
             amount,
             description,
             date,
-            type,
             categoryId,
-            userId: req.user.id
+            userId: req.user.id,
+            receipt: req.file ? req.file.path : null,
+            note,
+            isRecurring: isRecurring === 'true',
+            recurringFrequency: isRecurring === 'true' ? recurringFrequency : null,
+            nextRecurringDate
         });
 
-        // Get the created expense with category information
-        const expense = await Expense.findByPk(newExpense.id, {
-            include: [
-                {
-                    model: Category,
-                    attributes: ['id', 'name', 'type', 'icon']
-                }
-            ]
+        res.status(201).json({
+            success: true,
+            data: expense
         });
-
-        res.status(201).json(expense);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error creating expense',
+            error: error.message
+        });
     }
 });
 
-// @route   PUT api/expenses/:id
-// @desc    Update an expense
-// @access  Private
-router.put('/:id', [
-    auth,
-    [
-        check('amount', 'Amount is required and must be a positive number').isFloat({ min: 0.01 }),
-        check('date', 'Date is required').not().isEmpty(),
-        check('type', 'Type must be either expense or income').isIn(['expense', 'income']),
-        check('categoryId', 'Category is required').not().isEmpty()
-    ]
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { amount, description, date, type, categoryId } = req.body;
-
+// Update an expense
+router.put('/:id', auth, upload.single('receipt'), async (req, res) => {
     try {
-        // Find the expense
-        let expense = await Expense.findOne({
-            where: {
-                id: req.params.id,
-                userId: req.user.id
-            }
-        });
-
-        // Check if expense exists
-        if (!expense) {
-            return res.status(404).json({ msg: 'Expense not found' });
-        }
-
-        // Verify the category exists and belongs to the user
-        const category = await Category.findOne({
-            where: {
-                id: categoryId,
-                userId: req.user.id
-            }
-        });
-
-        if (!category) {
-            return res.status(404).json({ msg: 'Category not found or unauthorized' });
-        }
-
-        // Update expense
-        expense.amount = amount;
-        expense.description = description;
-        expense.date = date;
-        expense.type = type;
-        expense.categoryId = categoryId;
-
-        await expense.save();
-
-        // Get the updated expense with category information
-        const updatedExpense = await Expense.findByPk(expense.id, {
-            include: [
-                {
-                    model: Category,
-                    attributes: ['id', 'name', 'type', 'icon']
-                }
-            ]
-        });
-
-        res.json(updatedExpense);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
-});
-
-// @route   DELETE api/expenses/:id
-// @desc    Delete an expense
-// @access  Private
-router.delete('/:id', auth, async (req, res) => {
-    try {
-        // Find the expense
+        const { amount, description, date, categoryId, note, isRecurring, recurringFrequency } = req.body;
         const expense = await Expense.findOne({
             where: {
                 id: req.params.id,
@@ -257,18 +191,198 @@ router.delete('/:id', auth, async (req, res) => {
             }
         });
 
-        // Check if expense exists
         if (!expense) {
-            return res.status(404).json({ msg: 'Expense not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Expense not found'
+            });
         }
 
-        // Delete expense
-        await expense.destroy();
+        // Calculate next recurring date if it's a recurring expense
+        let nextRecurringDate = null;
+        if (isRecurring === 'true' && recurringFrequency) {
+            const currentDate = new Date(date);
+            switch (recurringFrequency) {
+                case 'daily':
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    break;
+                case 'weekly':
+                    currentDate.setDate(currentDate.getDate() + 7);
+                    break;
+                case 'monthly':
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                    break;
+                case 'yearly':
+                    currentDate.setFullYear(currentDate.getFullYear() + 1);
+                    break;
+            }
+            nextRecurringDate = currentDate.toISOString().split('T')[0];
+        }
 
-        res.json({ msg: 'Expense removed' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        // Delete old receipt if new one is uploaded
+        if (req.file && expense.receipt) {
+            fs.unlinkSync(expense.receipt);
+        }
+
+        await expense.update({
+            amount,
+            description,
+            date,
+            categoryId,
+            note,
+            receipt: req.file ? req.file.path : expense.receipt,
+            isRecurring: isRecurring === 'true',
+            recurringFrequency: isRecurring === 'true' ? recurringFrequency : null,
+            nextRecurringDate
+        });
+
+        res.json({
+            success: true,
+            data: expense
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error updating expense',
+            error: error.message
+        });
+    }
+});
+
+// Delete an expense
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const expense = await Expense.findOne({
+            where: {
+                id: req.params.id,
+                userId: req.user.id
+            }
+        });
+
+        if (!expense) {
+            return res.status(404).json({
+                success: false,
+                message: 'Expense not found'
+            });
+        }
+
+        // Delete receipt file if exists
+        if (expense.receipt) {
+            fs.unlinkSync(expense.receipt);
+        }
+
+        await expense.destroy();
+        res.json({
+            success: true,
+            message: 'Expense deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting expense',
+            error: error.message
+        });
+    }
+});
+
+// Get expense statistics
+router.get('/statistics', auth, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        const expenses = await Expense.findAll({
+            where: {
+                userId: req.user.id,
+                date: {
+                    [Op.between]: [startDate, endDate]
+                }
+            },
+            include: [{
+                model: Category,
+                as: 'category'
+            }]
+        });
+
+        // Calculate total expenses
+        const totalExpenses = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+
+        res.json({
+            success: true,
+            data: {
+                totalExpenses,
+                expenses
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching expense statistics',
+            error: error.message
+        });
+    }
+});
+
+// Process recurring expenses
+router.post('/process-recurring', auth, async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const recurringExpenses = await Expense.findAll({
+            where: {
+                userId: req.user.id,
+                isRecurring: true,
+                nextRecurringDate: {
+                    [Op.lte]: today
+                }
+            }
+        });
+
+        for (const expense of recurringExpenses) {
+            // Create new expense
+            const newExpense = await Expense.create({
+                amount: expense.amount,
+                description: expense.description,
+                date: expense.nextRecurringDate,
+                categoryId: expense.categoryId,
+                userId: expense.userId,
+                note: expense.note,
+                isRecurring: true,
+                recurringFrequency: expense.recurringFrequency
+            });
+
+            // Calculate next recurring date
+            const nextDate = new Date(expense.nextRecurringDate);
+            switch (expense.recurringFrequency) {
+                case 'daily':
+                    nextDate.setDate(nextDate.getDate() + 1);
+                    break;
+                case 'weekly':
+                    nextDate.setDate(nextDate.getDate() + 7);
+                    break;
+                case 'monthly':
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    break;
+                case 'yearly':
+                    nextDate.setFullYear(nextDate.getFullYear() + 1);
+                    break;
+            }
+
+            // Update original expense with next recurring date
+            await expense.update({
+                nextRecurringDate: nextDate.toISOString().split('T')[0]
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Recurring expenses processed successfully',
+            processedCount: recurringExpenses.length
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error processing recurring expenses',
+            error: error.message
+        });
     }
 });
 

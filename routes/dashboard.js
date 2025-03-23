@@ -63,7 +63,6 @@ router.get('/', auth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Dashboard data error:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching dashboard data',
