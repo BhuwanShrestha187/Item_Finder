@@ -11,54 +11,67 @@ const Expense = sequelize.define('Expense', {
     },
     amount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-            isDecimal: true,
-            min: 0.01
-        }
+        allowNull: false
     },
     description: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: false
     },
     date: {
         type: DataTypes.DATEONLY,
-        allowNull: false,
-        defaultValue: DataTypes.NOW
+        allowNull: false
     },
-    type: {
-        type: DataTypes.ENUM('expense', 'income'),
+    categoryId: {
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     userId: {
         type: DataTypes.INTEGER,
-        references: {
-            model: User,
-            key: 'id'
-        }
-    },
-    categoryId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: Category,
-            key: 'id'
-        },
         allowNull: false
+    },
+    receipt: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    note: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    isRecurring: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    recurringFrequency: {
+        type: DataTypes.ENUM('daily', 'weekly', 'monthly', 'yearly'),
+        allowNull: true
+    },
+    nextRecurringDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
     }
 }, {
-    tableName: 'expenses',
     timestamps: true
 });
 
-// Set up associations
+// Define associations
 Expense.belongsTo(User, {
     foreignKey: 'userId',
-    onDelete: 'CASCADE'
+    as: 'user'
 });
 
 Expense.belongsTo(Category, {
     foreignKey: 'categoryId',
-    onDelete: 'SET NULL'
+    as: 'category'
+});
+
+User.hasMany(Expense, {
+    foreignKey: 'userId',
+    as: 'expenses'
+});
+
+Category.hasMany(Expense, {
+    foreignKey: 'categoryId',
+    as: 'expenses'
 });
 
 module.exports = Expense; 

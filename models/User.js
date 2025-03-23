@@ -32,7 +32,21 @@ const User = sequelize.define('User', {
     role: {
         type: DataTypes.ENUM('user', 'admin'),
         defaultValue: 'user',
-    }
+    },
+    profilePicture: {
+        type: DataTypes.STRING,
+    },
+    phoneNumber: {
+        type: DataTypes.STRING,
+    },
+    preferences: {
+        type: DataTypes.JSON,
+        defaultValue: {},
+    },
+    isEmailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
 }, {
     tableName: 'users',
     timestamps: true,
@@ -51,7 +65,7 @@ User.prototype.generateAuthToken = function () {
     return jwt.sign(
         { id: this.id, email: this.email, role: this.role },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        { expiresIn: '24h' }
     );
 };
 
@@ -60,4 +74,4 @@ User.prototype.checkPassword = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
 
-module.exports = User; 
+module.exports = User;
