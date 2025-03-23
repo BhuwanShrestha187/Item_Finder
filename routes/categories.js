@@ -1,12 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
-const auth = require('../middleware/auth');
 const Category = require('../models/Category');
+const auth = require('../middleware/auth');
 
-// @route   GET api/categories
-// @desc    Get all categories for the current user
-// @access  Private
+// Get all categories for the authenticated user
 router.get('/', auth, async (req, res) => {
     try {
         const categories = await Category.findAll({
@@ -14,117 +11,107 @@ router.get('/', auth, async (req, res) => {
             order: [['name', 'ASC']]
         });
 
-        res.json(categories);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        res.json({
+            success: true,
+            data: categories
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching categories',
+            error: error.message
+        });
     }
 });
 
-// @route   POST api/categories
-// @desc    Create a new category
-// @access  Private
-router.post('/', [
-    auth,
-    [
-        check('name', 'Name is required').not().isEmpty(),
-        check('type', 'Type must be either expense or income').isIn(['expense', 'income'])
-    ]
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { name, type, description, icon } = req.body;
-
+// Create a new category
+router.post('/', auth, async (req, res) => {
     try {
-        const newCategory = await Category.create({
+        const { name, description, color } = req.body;
+
+        const category = await Category.create({
             name,
-            type,
-            description,
-            icon,
+            description: description || null,
+            color: color || '#666666', // Default color if not provided
             userId: req.user.id
         });
 
-        res.status(201).json(newCategory);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(201).json({
+            success: true,
+            data: category
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error creating category',
+            error: error.message
+        });
     }
 });
 
-// @route   PUT api/categories/:id
-// @desc    Update a category
-// @access  Private
-router.put('/:id', [
-    auth,
-    [
-        check('name', 'Name is required').not().isEmpty(),
-        check('type', 'Type must be either expense or income').isIn(['expense', 'income'])
-    ]
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { name, type, description, icon } = req.body;
-
+// Update a category
+router.put('/:id', auth, async (req, res) => {
     try {
-        // Find the category
-        let category = await Category.findByPk(req.params.id);
+        const { name, description, color } = req.body;
 
-        // Check if category exists
+        const category = await Category.findOne({
+            where: {
+                id: req.params.id,
+                userId: req.user.id
+            }
+        });
+
         if (!category) {
-            return res.status(404).json({ msg: 'Category not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Category not found'
+            });
         }
 
-        // Check if the category belongs to the user
-        if (category.userId !== req.user.id) {
-            return res.status(401).json({ msg: 'User not authorized' });
-        }
+        await category.update({ name, description, color });
 
-        // Update category
-        category.name = name;
-        category.type = type;
-        category.description = description;
-        category.icon = icon;
-
-        await category.save();
-
-        res.json(category);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        res.json({
+            success: true,
+            data: category
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error updating category',
+            error: error.message
+        });
     }
 });
 
-// @route   DELETE api/categories/:id
-// @desc    Delete a category
-// @access  Private
+// Delete a category
 router.delete('/:id', auth, async (req, res) => {
     try {
-        // Find the category
-        const category = await Category.findByPk(req.params.id);
+        const category = await Category.findOne({
+            where: {
+                id: req.params.id,
+                userId: req.user.id
+            }
+        });
 
-        // Check if category exists
         if (!category) {
-            return res.status(404).json({ msg: 'Category not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Category not found'
+            });
         }
 
-        // Check if the category belongs to the user
-        if (category.userId !== req.user.id) {
-            return res.status(401).json({ msg: 'User not authorized' });
-        }
-
-        // Delete category
         await category.destroy();
 
-        res.json({ msg: 'Category removed' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        res.json({
+            success: true,
+            message: 'Category deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting category',
+            error: error.message
+        });
     }
 });
 
