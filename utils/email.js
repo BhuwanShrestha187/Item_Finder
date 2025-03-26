@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the utility for the email.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({

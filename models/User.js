@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the model for the user.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');

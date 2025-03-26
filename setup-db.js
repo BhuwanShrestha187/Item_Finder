@@ -8,7 +8,7 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST,
         dialect: 'postgres',
-        logging: console.log
+        logging: false
     }
 );
 
@@ -34,11 +34,8 @@ const DEFAULT_CATEGORIES = [
 
 async function setupDatabase() {
     try {
-        // Test database connection
         await sequelize.authenticate();
-        console.log('Database connection established successfully');
 
-        // Create enum type for category type
         await sequelize.query(`
             DO $$ BEGIN
                 CREATE TYPE "public"."enum_categories_type" AS ENUM ('expense', 'income');
@@ -46,41 +43,26 @@ async function setupDatabase() {
                 WHEN duplicate_object THEN null;
             END $$;
         `);
-        console.log('Category enum type created or already exists');
 
-        // Sync all models
         await User.sync({ force: true });
-        console.log('User table created');
-
         await Category.sync({ force: true });
-        console.log('Category table created');
-
         await Expense.sync({ force: true });
-        console.log('Expense table created');
-
         await Budget.sync({ force: true });
-        console.log('Budget table created');
 
-        // Create a test user
         const user = await User.create({
             name: 'Test User',
             email: 'test@example.com',
             password: 'password123'
         });
-        console.log('Test user created');
 
-        // Create default categories for the test user
         const categories = DEFAULT_CATEGORIES.map(cat => ({
             ...cat,
             userId: user.id
         }));
         await Category.bulkCreate(categories);
-        console.log('Default categories created');
 
-        console.log('Database setup completed successfully');
         process.exit(0);
     } catch (error) {
-        console.error('Error setting up database:', error);
         process.exit(1);
     }
 }

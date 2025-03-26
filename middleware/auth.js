@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the middleware for the authentication of the user.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 

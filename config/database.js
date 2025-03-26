@@ -1,3 +1,11 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the database configuration file for the Expense Tracker project.
+    Project Name: Expense Tracker
+    date: 2025-March 28
+
+*/
+
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 

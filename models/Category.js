@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the model for the category.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./User');

@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the route for the categories.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const express = require('express');
 const router = express.Router();
 const Category = require('../models/Category');

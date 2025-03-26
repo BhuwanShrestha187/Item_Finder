@@ -1,3 +1,10 @@
+/*
+    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
+    Description: This is the file to remove the verification columns from the users table.
+    Project Name: Expense Tracker
+    date: 2025-April 16
+*/
+
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
