@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the middleware for the authentication of the user.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
@@ -13,7 +6,7 @@ const auth = async (req, res, next) => {
         // Check for token in Authorization header
         const authHeader = req.header('Authorization');
         const token = authHeader ? authHeader.replace('Bearer ', '') : req.cookies.token;
-
+        
         if (!token) {
             return res.status(401).json({
                 success: false,

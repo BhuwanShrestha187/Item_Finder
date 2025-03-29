@@ -1,14 +1,8 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the route for the analytics.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const express = require('express');
 const router = express.Router();
 const AnalyticsService = require('../services/analytics');
 const auth = require('../middleware/auth');
+
 // Get expense summary
 router.get('/summary', auth, async (req, res) => {
     try {

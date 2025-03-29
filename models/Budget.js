@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the model for the budget.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./User');
@@ -113,10 +106,10 @@ Category.hasMany(Budget, {
 });
 
 // Enhanced instance methods
-Budget.prototype.updateSpent = async function () {
+Budget.prototype.updateSpent = async function() {
     const Expense = require('./Expense');
     const { Op } = require('sequelize');
-
+    
     const totalSpent = await Expense.sum('amount', {
         where: {
             userId: this.userId,
@@ -126,12 +119,12 @@ Budget.prototype.updateSpent = async function () {
             }
         }
     });
-
+    
     this.spent = totalSpent || 0;
     return this;
 };
 
-Budget.prototype.checkAndCreateAlert = async function () {
+Budget.prototype.checkAndCreateAlert = async function() {
     if (!this.isAlertEnabled) return null;
 
     const percentageUsed = this.percentageUsed;
@@ -141,8 +134,8 @@ Budget.prototype.checkAndCreateAlert = async function () {
         const category = await this.getCategory();
         const user = await this.getUser();
 
-        const title = percentageUsed >= 100
-            ? 'Budget Exceeded!'
+        const title = percentageUsed >= 100 
+            ? 'Budget Exceeded!' 
             : 'Budget Alert: Approaching Limit';
 
         const message = percentageUsed >= 100
@@ -176,7 +169,7 @@ Budget.prototype.checkAndCreateAlert = async function () {
 };
 
 // Static method to get yearly budget summary
-Budget.getYearlySummary = async function (userId, year) {
+Budget.getYearlySummary = async function(userId, year) {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
 
@@ -225,7 +218,7 @@ Budget.getYearlySummary = async function (userId, year) {
         const monthStart = new Date(year, month, 1);
         const monthEnd = new Date(year, month + 1, 0);
 
-        const monthBudgets = monthlyBudgets.filter(budget =>
+        const monthBudgets = monthlyBudgets.filter(budget => 
             budget.startDate <= monthEnd && budget.endDate >= monthStart
         );
 
@@ -245,7 +238,7 @@ Budget.getYearlySummary = async function (userId, year) {
 };
 
 // Static method to create monthly budgets from yearly budget
-Budget.createMonthlyBudgets = async function (yearlyBudget) {
+Budget.createMonthlyBudgets = async function(yearlyBudget) {
     const monthlyBudgets = [];
     const year = new Date(yearlyBudget.startDate).getFullYear();
     const monthlyAmount = yearlyBudget.amount / 12;
@@ -272,7 +265,7 @@ Budget.createMonthlyBudgets = async function (yearlyBudget) {
 };
 
 // Static method to get all budgets with alerts triggered
-Budget.getTriggeredAlerts = async function (userId) {
+Budget.getTriggeredAlerts = async function(userId) {
     const budgets = await this.findAll({
         where: {
             userId,

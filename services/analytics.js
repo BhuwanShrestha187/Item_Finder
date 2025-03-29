@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the service for the analytics.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const Expense = require('../models/Expense');
 const Category = require('../models/Category');
 const Budget = require('../models/Budget');

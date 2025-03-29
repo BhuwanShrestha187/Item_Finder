@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the route for the budgets.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const express = require('express');
 const router = express.Router();
 const Budget = require('../models/Budget');
@@ -66,7 +59,7 @@ router.post('/', auth, async (req, res) => {
         if (period === 'yearly') {
             const start = new Date(startDate);
             const end = new Date(endDate);
-
+            
             if (start.getFullYear() !== end.getFullYear()) {
                 return res.status(400).json({
                     success: false,
@@ -268,7 +261,7 @@ router.get('/:id/progress', auth, async (req, res) => {
 router.get('/comparison', auth, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-
+        
         if (!startDate || !endDate) {
             return res.status(400).json({
                 success: false,
@@ -296,7 +289,7 @@ router.get('/comparison', auth, async (req, res) => {
 router.get('/alerts', auth, async (req, res) => {
     try {
         const alerts = await Budget.getTriggeredAlerts(req.user.id);
-
+        
         res.json({
             success: true,
             data: alerts

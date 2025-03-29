@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the route for the expenses.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -139,7 +132,7 @@ router.get('/range', auth, async (req, res) => {
 router.post('/', auth, upload.single('receipt'), async (req, res) => {
     try {
         const { amount, description, date, categoryId, note, isRecurring, recurringFrequency } = req.body;
-
+        
         // Calculate next recurring date if it's a recurring expense
         let nextRecurringDate = null;
         if (isRecurring === 'true' && recurringFrequency) {

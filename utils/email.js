@@ -1,10 +1,3 @@
-/*
-    Author: Bhuwan Shrestha, Shubh Soni, Dev Patel, Alen varghese
-    Description: This is the utility for the email.
-    Project Name: Expense Tracker
-    date: 2025-April 16
-*/
-
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
@@ -17,19 +10,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async ({ to, subject, html }) => {
+const sendEmail = async (to, subject, text, html) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"Expense Tracker" <${process.env.SMTP_USER}>`,
+    // Setup email data
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
       to,
       subject,
-      html,
-    });
+      text,
+      html
+    };
 
-    console.log('Email sent:', info.messageId);
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
     throw error;
   }
 };
